@@ -59,3 +59,18 @@ Live market data, IDX official disclosure ingestion, Telegram alerts, MT5, Stock
 - `POST /guardian/incidents`, `GET /guardian/incidents`, `POST /guardian/incidents/{id}/resolve`
 - `GET /audit`
 - `POST /paper/orders`, `GET /paper/orders`
+
+
+## Agent Operations — first implementation
+
+The Agent Task Engine is now included as a bounded backend foundation. It stores task records and event history in the same SQLite database and requires an authenticated session.
+
+Endpoints:
+- `POST /agent/tasks` — create a task (`plan_only` or `system_check`).
+- `GET /agent/tasks` — list the current user's tasks.
+- `GET /agent/tasks/{task_id}` — task details and event timeline.
+- `GET /agent/tasks/{task_id}/events` — event timeline only.
+- `POST /agent/tasks/{task_id}/run` — explicitly run a queued task.
+- `POST /agent/tasks/{task_id}/cancel` — cancel a queued task.
+
+Current behavior is intentionally limited: handlers run locally, record status/progress/events, and return a plan or basic system-check result. **This is not yet an autonomous AI agent**: it does not call Grok, fetch market data, run arbitrary tools, schedule background work, or execute trades. Tasks are executed synchronously by an explicit API request. The next implementation steps are automated tests, durable worker/lease handling, dashboard integration, and a separately configured, budget-limited AI provider adapter.
