@@ -308,3 +308,8 @@ def paper_order(data: PaperOrderInput, user=Depends(require_roles("ordinary", "a
 def paper_orders(user=Depends(current_user)):
     with db() as c:
         return [dict(r) for r in c.execute("SELECT id,symbol,side,quantity,note,status,created_at FROM paper_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 200", (user["id"],)).fetchall()]
+
+
+# Agent Operations routes are isolated from the core access-governance handlers.
+from app.agent_tasks import router as agent_tasks_router
+app.include_router(agent_tasks_router)
