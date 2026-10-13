@@ -18,6 +18,38 @@ APP_NAME = "Trading Security Hub"
 DB_PATH = Path(os.getenv("DATABASE_PATH", "./data/guardian.db"))
 ADMIN_BOOTSTRAP_TOKEN = os.getenv("ADMIN_BOOTSTRAP_TOKEN", "")
 SESSION_TTL = max(5, int(os.getenv("SESSION_TTL_MINUTES", "30"))) * 60
+
+# Outbound-only Telegram reporting. No polling/webhook/command handlers are registered.
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+TELEGRAM_REPORTS_ENABLED = os.getenv("TELEGRAM_REPORTS_ENABLED", "false").lower() == "true"
+
+
+def telegram_report(message: str) -> bool:
+    """Best-effort report; Telegram failures never change access/security decisions."""
+    if not (TELEGRAM_REPORTS_ENABLED and TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID):
+        return False
+    import json
+    import urllib.error
+    import urllib.request
+
+    payload = json.dumps({"chat_id": TELEGRAM_CHAT_ID, "text": message[:3900],
+                          "disable_web_page_preview": True}).encode("utf-8")
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+        data=payload, headers={"Content-Type": "application/json"}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            return response.status == 200 and result.get("ok") is True
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+        # Never log the token or Telegram response.
+        return False
+
+
+def report_event(event: str, detail: str):
+    telegram_report(f"[AI Ops Universe] {event}\n{detail}"[:3900])
+
 ROLES = {"blocked", "ordinary", "admin", "privileged"}
 app = FastAPI(title=APP_NAME, version="0.1.0", description="Backend API for authenticated access governance, Guardian incident handling, audit logs, and paper-trading records.")
 app.add_middleware(CORSMiddleware, allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:8000").split(","), allow_credentials=True, allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"])
@@ -162,6 +194,7 @@ def login(data: LoginInput, request: Request):
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         c.execute("INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)", (token_hash, row["id"], int(time.time()) + SESSION_TTL))
     audit(row["username"], "login_success", str(row["id"]), f"source={request.client.host if request.client else 'unknown'}")
+    report_event("Login berhasil", f"akun={row['username']} role={row['role']}")
     return {"access_token": token, "token_type": "bearer", "expires_in": SESSION_TTL, "role": row["role"]}
 
 
@@ -187,6 +220,7 @@ def request_access(data: AccessRequestInput, user=Depends(current_user)):
         cur = c.execute("INSERT INTO access_requests(user_id,requested_role,created_at) VALUES(?,?,?)", (user["id"], data.requested_role, int(time.time())))
         request_id = cur.lastrowid
     audit(user["username"], "access_requested", str(request_id), data.requested_role)
+    report_event("Permintaan akses", f"akun={user['username']} role_diminta={data.requested_role} status=pending")
     return {"id": request_id, "status": "pending", "requested_role": data.requested_role}
 
 
@@ -213,6 +247,7 @@ def decide_access(request_id: int, data: DecisionInput, user=Depends(require_rol
             c.execute("UPDATE sessions SET revoked=1 WHERE user_id=?", (req["user_id"],))
         c.execute("UPDATE access_requests SET status=?,decided_by=?,decided_at=? WHERE id=?", (status, user["id"], int(time.time()), request_id))
     audit(user["username"], "access_request_"+status, str(request_id), req["requested_role"])
+    report_event("Keputusan permintaan akses", f"request_id={request_id} role={req['requested_role']} status={status} oleh={user['username']}")
     return {"id": request_id, "status": status}
 
 
@@ -230,6 +265,7 @@ def create_incident(data: IncidentInput, user=Depends(require_roles("admin", "pr
                 c.execute("UPDATE users SET role='blocked' WHERE id=?", (account["id"],))
                 c.execute("UPDATE sessions SET revoked=1 WHERE user_id=?", (account["id"],))
     audit(user["username"], "incident_created", str(incident_id), f"{data.severity}:{status}:{data.reason}")
+    report_event("Guardian incident", f"id={incident_id} severity={data.severity} status={status} subject={data.subject} source={data.source or 'unknown'} reason={data.reason}")
     return {"id": incident_id, "status": status, "session_revoked_if_account_matched": status == "blocked"}
 
 
@@ -247,6 +283,7 @@ def resolve_incident(incident_id: int, user=Depends(require_roles("admin", "priv
             raise HTTPException(404, "Open incident not found")
         c.execute("UPDATE incidents SET status='resolved',resolved_by=?,resolved_at=? WHERE id=?", (user["id"], int(time.time()), incident_id))
     audit(user["username"], "incident_resolved", str(incident_id))
+    report_event("Guardian incident selesai", f"id={incident_id} oleh={user['username']}")
     return {"id": incident_id, "status": "resolved", "note": "Resolution is audited; account role restoration is a separate privileged action."}
 
 
@@ -263,6 +300,7 @@ def paper_order(data: PaperOrderInput, user=Depends(require_roles("ordinary", "a
                         (user["id"], data.symbol.upper(), data.side, data.quantity, data.note, "recorded_paper_only", int(time.time())))
         order_id = cur.lastrowid
     audit(user["username"], "paper_order_recorded", str(order_id), f"{data.symbol.upper()} {data.side} {data.quantity}")
+    report_event("Paper order dicatat", f"akun={user['username']} symbol={data.symbol.upper()} side={data.side} quantity={data.quantity}; tidak ada order broker dikirim")
     return {"id": order_id, "status": "recorded_paper_only", "message": "No broker or exchange order was sent."}
 
 
