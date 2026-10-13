@@ -74,3 +74,12 @@ Endpoints:
 - `POST /agent/tasks/{task_id}/cancel` — cancel a queued task.
 
 Current behavior is intentionally limited: handlers run locally, record status/progress/events, and return a plan or basic system-check result. **This is not yet an autonomous AI agent**: it does not call Grok, fetch market data, run arbitrary tools, schedule background work, or execute trades. Tasks are executed synchronously by an explicit API request. The next implementation steps are automated tests, durable worker/lease handling, dashboard integration, and a separately configured, budget-limited AI provider adapter.
+
+
+## Project blueprint and tests
+
+- Agent roles, responsibilities, access-control contract, strategy validation gates, data-source requirements, budget controls and staged delivery plan: [`docs/AI_OPS_AGENT_BLUEPRINT.md`](docs/AI_OPS_AGENT_BLUEPRINT.md).
+- Initial API tests: [`tests/test_agent_tasks.py`](tests/test_agent_tasks.py).
+- Install test dependencies with `pip install -r requirements-dev.txt`, then run `pytest -q`.
+
+The test suite has been added to the repository but has **not yet been executed in a configured runtime**. Treat it as pending verification until CI or a local run reports a result.
