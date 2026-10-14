@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guardian · Perangkat Tepercaya</title>
+<style>
+:root{color-scheme:dark;--bg:#080d18;--panel:#111a2b;--line:#263550;--muted:#9aacc7;--text:#edf4ff;--cyan:#5de4dc;--amber:#ffc96b;--red:#ff9292}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#142544 0,#080d18 60%);color:var(--text);font:15px/1.55 system-ui,Segoe UI,sans-serif}main{max-width:900px;margin:auto;padding:28px 18px 50px}a{color:var(--cyan)}.eyebrow{color:var(--cyan);text-transform:uppercase;letter-spacing:.14em;font-size:11px;font-weight:800}.card{background:linear-gradient(145deg,#131f33,#0e1727);border:1px solid var(--line);border-radius:16px;padding:20px;margin:16px 0}h1{font-size:clamp(27px,4vw,40px);line-height:1.1}h2{font-size:19px;margin-top:0}.muted,.small{color:var(--muted)}.small{font-size:12px}.notice{border-left:3px solid var(--amber);padding:12px;background:#2a2418;border-radius:4px}.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #233149;padding:12px 0}.row:last-child{border:0}button{background:#192942;border:1px solid #3a5477;color:var(--text);padding:10px 13px;border-radius:9px;cursor:pointer}button:hover{border-color:var(--cyan)}input,select{width:100%;background:#091222;color:var(--text);border:1px solid var(--line);padding:10px;border-radius:9px;margin:5px 0 12px}label{font-size:13px;color:var(--muted)}.tag{font-size:11px;border:1px solid var(--line);border-radius:6px;padding:3px 7px;color:var(--amber)}.buttonrow{display:flex;gap:8px;flex-wrap:wrap}
+</style></head>
+<body><main>
+<p><a href="./">← Kembali ke AI Ops Universe</a></p>
+<div class="eyebrow">Security Ops · Guardian</div><h1>Perangkat Tepercaya</h1>
+<p class="muted">Pusat rancangan pendaftaran dan pencabutan akses perangkat.</p>
+<div class="card"><h2>Status implementasi</h2><p class="notice"><b>Belum aktif untuk pendaftaran sungguhan.</b> Halaman ini sudah ditambahkan, tetapi backend saat ini belum menyediakan endpoint enrollment perangkat, verifikasi passkey/WebAuthn, atau penyimpanan daftar perangkat. Jangan anggap perangkat sudah terverifikasi dari halaman ini.</p></div>
+<div class="card"><h2>Daftarkan perangkat ini</h2>
+<label for="deviceName">Nama perangkat (label untuk kamu)</label><input id="deviceName" maxlength="60" placeholder="Contoh: HP utama">
+<label for="deviceType">Jenis perangkat</label><select id="deviceType"><option value="phone">HP</option><option value="pc">PC / Laptop</option><option value="tablet">Tablet</option><option value="other">Lainnya</option></select>
+<label for="devicePurpose">Catatan (opsional)</label><input id="devicePurpose" maxlength="120" placeholder="Contoh: perangkat pribadi">
+<div class="buttonrow"><button id="start">Mulai pendaftaran</button></div><p id="result" class="small" aria-live="polite">Formulir ini belum mengirim atau menyimpan data perangkat.</p>
+</div>
+<div class="card"><h2>Daftar perangkat</h2><p class="muted">Belum ada daftar perangkat dari server. Perangkat yang ditampilkan browser saja tidak dapat membuktikan kepemilikan atau memberi hak Admin.</p><div class="row"><span>HP utama</span><span class="tag">Belum didaftarkan</span></div><div class="row"><span>PC utama</span><span class="tag">Belum didaftarkan</span></div></div>
+<div class="card"><h2>Aturan akses yang direncanakan</h2><div class="row"><span>HP utama</span><span>Admin — setelah verifikasi server</span></div><div class="row"><span>PC utama</span><span>Privileged — setelah verifikasi server</span></div><div class="row"><span>Perangkat lain</span><span>Ordinary</span></div><div class="row"><span>Akun diblokir</span><span>Akses ditolak</span></div><p class="small">Hak akses tidak boleh diberikan berdasarkan nama perangkat atau alamat IP saja. Diperlukan verifikasi kriptografis, persetujuan pemilik, dan pencabutan kredensial di backend.</p></div>
+</main>
+<script>
+document.getElementById('start').addEventListener('click',()=>{const name=document.getElementById('deviceName').value.trim();const type=document.getElementById('deviceType').value;if(!name){document.getElementById('result').textContent='Isi nama perangkat terlebih dahulu.';return;}document.getElementById('result').textContent='Belum didaftarkan: backend enrollment dan verifikasi passkey belum tersedia. Data ini tidak dikirim atau disimpan. Jenis yang dipilih: '+type+'.';});
+</script></body></html>
