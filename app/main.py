@@ -52,7 +52,7 @@ def report_event(event: str, detail: str):
 
 ROLES = {"blocked", "ordinary", "admin", "privileged"}
 app = FastAPI(title=APP_NAME, version="0.1.0", description="Backend API for authenticated access governance, Guardian incident handling, audit logs, and paper-trading records.")
-app.add_middleware(CORSMiddleware, allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:8000").split(","), allow_credentials=True, allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"])
+app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in os.getenv("CORS_ORIGINS", "https://khaerulazzmi3-ctrl.github.io,http://localhost:8000,http://127.0.0.1:8000").split(",") if origin.strip()], allow_credentials=False, allow_methods=["GET", "POST", "OPTIONS"], allow_headers=["Authorization", "Content-Type"])
 
 
 @contextmanager
