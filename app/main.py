@@ -239,8 +239,13 @@ def decide_access(request_id: int, data: DecisionInput, user=Depends(require_rol
         req = c.execute("SELECT * FROM access_requests WHERE id=?", (request_id,)).fetchone()
         if not req or req["status"] != "pending":
             raise HTTPException(404, "Pending request not found")
-        if req["requested_role"] == "privileged" and user["role"] != "privileged":
-            raise HTTPException(403, "Only privileged governance can grant privileged access")
+        # Istimewa is the owner/boss tier. Admin may not grant Admin or Istimewa;
+        # only an existing Istimewa account can approve either elevated role.
+        if req["requested_role"] in ("admin", "privileged") and user["role"] != "privileged":
+            raise HTTPException(403, "Only Istimewa governance can grant Admin or Istimewa access")
+        target = c.execute("SELECT role FROM users WHERE id=?", (req["user_id"],)).fetchone()
+        if target and target["role"] == "privileged" and user["role"] != "privileged":
+            raise HTTPException(403, "Admin cannot change the Istimewa account")
         status = "approved" if data.decision == "approve" else "denied"
         if data.decision == "approve":
             c.execute("UPDATE users SET role=? WHERE id=?", (req["requested_role"], req["user_id"]))
@@ -260,7 +265,10 @@ def create_incident(data: IncidentInput, user=Depends(require_roles("admin", "pr
         incident_id = cur.lastrowid
         # If subject matches an account, immediately revoke sessions on high-confidence severity.
         if status == "blocked":
-            account = c.execute("SELECT id FROM users WHERE username=?", (data.subject,)).fetchone()
+            account = c.execute("SELECT id,role FROM users WHERE username=?", (data.subject,)).fetchone()
+            if account and account["role"] == "privileged" and user["role"] != "privileged":
+                c.execute("DELETE FROM incidents WHERE id=?", (incident_id,))
+                raise HTTPException(403, "Admin cannot block the Istimewa account")
             if account:
                 c.execute("UPDATE users SET role='blocked' WHERE id=?", (account["id"],))
                 c.execute("UPDATE sessions SET revoked=1 WHERE user_id=?", (account["id"],))
